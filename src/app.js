@@ -23,6 +23,7 @@ import {
     " and this is just normal text",
     h("a", { props: { href: "/foo" } }, "I'll take you places!"),
   ]);
+  
   // Patch into empty DOM element – this modifies the DOM as a side effect
   patch(container, vnode);
   
