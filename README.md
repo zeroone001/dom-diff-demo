@@ -17,12 +17,30 @@ npm i -D webpack@5 webpack-cli@3 webpack-dev-server@3
     },
     elm: undefined, // 对应的真正的DOM节点
     key: null, // 唯一标识
-    sel: 'div',
+    tag: 'div',
     text: '啦啦啦啦'
 }
 
 ```
 
+### h 函数
+
+虚拟DOM（下文称VNode）就是使用js的普通对象来描述DOM的类型、属性、子元素等信息，一般通过名为h的函数来创建
+
 ### patch函数
 
-让虚拟节点上DOM树
+patch 函数是主函数，主要用来进行新旧vnode的对比，找到差异来更新实际的DOM
+它接收两个参数，第一个参数可以是DOM元素或者是VNode，表示旧的VNode，第二参数表示新的VNode，一般只有第一次调用时才会传DOM元素，如果第一个参数为DOM元素的话我们直接忽略它的子元素把它转为一个VNode
+
+
+
+
+
+
+
+
+
+
+参考文章
+
+[手写一个虚拟DOM库，彻底让你理解diff算法](https://mp.weixin.qq.com/s/V_YWbswXoea-Em-l_K97sw)
