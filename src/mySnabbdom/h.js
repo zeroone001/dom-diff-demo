@@ -2,7 +2,7 @@ import vnode from './vnode.js';
 
 
 // h函数
-export default function (tag, data, children) {
+export default function (tag, data = {}, children) {
     let text = '';
     let el;
     // 子元素是文本节点
@@ -13,7 +13,7 @@ export default function (tag, data, children) {
         children = undefined;
     }
 
-    let key = data.key ? data.key: undefined;
+    let key = data && data.key;
 
     return {
         tag,

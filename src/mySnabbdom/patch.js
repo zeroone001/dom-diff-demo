@@ -15,7 +15,7 @@ class Patch {
             oldNode.el = el;
         }
         // 新旧vnode进行比较
-        this.patchVNode(oldVNode, newVNode);
+        this.patchVNode(oldNode, newNode);
     }
     // 对新旧VNode进行比较，并且进行DOM更新
     patchVNode (oldVNode, newVNode) {
@@ -24,7 +24,6 @@ class Patch {
         }
     
         if (oldVNode.tag === newVNode.tag) {
-
             let el = newVNode.el = oldVNode.el;
             // 更新类名
             this.updateClass(el, newVNode);
@@ -52,13 +51,17 @@ class Patch {
                 */
                if (newVNode.children && newVNode.children.length) {
                     // 新节点存在子节点
-                    if (oldNode.children && oldNode.children.length) {
+                    if (oldVNode.children && oldVNode.children.length) {
 
-                        // 重点，diff算法
-                        diff(el, oldNode.children, newVNode.children);
+                        // 重点，diff算法 最复杂的情况
+                        diff(el, oldVNode.children, newVNode.children);
 
-                    } else if (oldNode.text)  {
-                        el.text = '';
+                    } else if (oldVNode.text)  {
+                        // 代表，oldVNode有text, newVNode有children
+                        // 1.删除text 2.插入新的children
+
+                        el.textContent = '';
+                        
                         // 插入newNode 的新的子节点
                         newVNode.children.forEach((item) => {
                             el.appendChild(this.createEl(item));
@@ -66,11 +69,11 @@ class Patch {
                     }
                } else {
                    // 新节点不存在子节点
-                    if (oldNode.children && oldNode.children.length) {
-                        oldNode.children.forEach((item) => {
+                    if (oldVNode.children && oldVNode.children.length) {
+                        oldVNode.children.forEach((item) => {
                             el.removeChild(item.el);
                         });
-                    } else if (oldNode.text) {
+                    } else if (oldVNode.text) {
                         el.textContent = '';
                     }
                }
@@ -171,8 +174,8 @@ class Patch {
     }
     // 更新事件
     updateEvent (el, oldNode, newNode) {
-        let oldEvents = oldNode && oldNode.data.event ? oldNode.data.event : {};
-        let newEvents = newNode.data.event || {};
+        let oldEvents = oldNode && oldNode.data && oldNode.data.event ? oldNode.data.event : {};
+        let newEvents = newNode.data && newNode.data.event || {};
         // 把旧的不需要的event删除
         Object.keys(oldEvents).forEach((item) => {
             if (newEvents[item] === undefined || oldEvents[item] !== newEvents[item]) {
