@@ -20,7 +20,8 @@ export default function (tag, data = {}, children) {
         text,
         children,
         el,
-        key
+        key,
+        data
     }
 };
  

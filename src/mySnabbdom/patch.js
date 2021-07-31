@@ -17,6 +17,7 @@ class Patch {
         // 新旧vnode进行比较
         this.patchVNode(oldNode, newNode);
     }
+    // 对比同一个虚拟节点，这是关键，要理解
     // 对新旧VNode进行比较，并且进行DOM更新
     patchVNode (oldVNode, newVNode) {
         if (oldVNode === newVNode) {
@@ -26,6 +27,7 @@ class Patch {
         if (oldVNode.tag === newVNode.tag) {
             let el = newVNode.el = oldVNode.el;
             // 更新类名
+            console.log('el--->', el);
             this.updateClass(el, newVNode);
             // 更新事件
             this.updateEvent(el, oldVNode, newVNode);
@@ -54,9 +56,9 @@ class Patch {
                     if (oldVNode.children && oldVNode.children.length) {
 
                         // 重点，diff算法 最复杂的情况
-                        diff(el, oldVNode.children, newVNode.children);
+                        this.diff(el, oldVNode.children, newVNode.children);
 
-                    } else if (oldVNode.text)  {
+                    } else {
                         // 代表，oldVNode有text, newVNode有children
                         // 1.删除text 2.插入新的children
 
@@ -85,7 +87,7 @@ class Patch {
             // 2. 插入DOM结构
             // 3. 删除旧的DOM结构
     
-            let newEl = createEl(newVNode);
+            let newEl = this.createEl(newVNode);
             // 更新类名
             this.updateClass(newEl, newVNode);
             // 删除所有的事件，防止内存泄漏
@@ -124,6 +126,14 @@ class Patch {
         return a.key === b.key && a.tag === b.tag;
     }
     // diff 算法
+    /*
+        四种命中查找
+        旧前VS新前，
+        旧后VS新后
+        旧前VS新后 （涉及移动节点）
+        旧后VS新前 （涉及移动节点）
+    */
+    // 目的是让旧列表变成新列表
     diff (el, oldChild, newChild) {
         // 位置指针
         let oldStartIdx = 0;
@@ -140,24 +150,121 @@ class Patch {
 
         let newStartNode = newChild[newStartIdx];
         let newEndNode = newChild[newEndIdx];
-
+        // 只要有一个循环结束，那么就结束了
+        // 如果旧节点先循环完了，说明要插入新的节点
+        // 如果新节点先循环结束，说明要删除旧节点
         while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-            if (this.isSameNode(oldStartNode, newStartNode)) {
-                
-            } else if (this.isSameNode(oldStartNode, newEndNode)) {
+            // 下面这四个if是跳过的操作
+            if (oldStartNode === null) {
+                // 前面有置为null的情况，如果遇到就跳过
+                oldStartNode = oldChild[++oldStartIdx];
+            } else if (oldEndNode === null) {
+                oldEndNode = oldChild[--oldEndIdx];
+            } else if (newStartNode === null) {
+                newStartNode = newChild[++newStartIdx];
+            } else if (newEndNode === null) {
+                newEndNode = newChild[--newEndIdx];
 
-            } else if (this.isSameNode(oldEndNode, newStartNode)) {
-                
+
+
+            } else if (this.isSameNode(oldStartNode, newStartNode)) {
+                // 旧前VS新前，
+                this.patchVNode(oldStartNode, newStartNode);
+                oldStartNode = oldChild[++oldStartIdx]; // 指针后移
+                newStartNode = newChild[++newStartIdx]; // 指针后移
+
             } else if (this.isSameNode(oldEndNode, newEndNode)) {
+                // 旧后VS新后
                 this.patchVNode(oldEndNode, newEndNode);
                 oldEndNode = oldChild[--oldEndIdx];
-                newEndNode = newChild[--newEndNode];
+                newEndNode = newChild[--newEndIdx];
+                
+            } else if (this.isSameNode(oldStartNode, newEndNode)) {
+                // 旧前VS新后
+                // 移动新后的节点到旧后之后去
+                this.patchVNode(oldStartNode, newEndNode);
+                // 移动oldStartNode节点到oldEndNode之后
+                el.insertBefore(oldStartNode.el, oldEndNode.el.nextSibling);
+
+                oldStartNode = oldChild[++oldStartIdx]; // 指针后移
+                newEndNode = newChild[--newEndIdx]; // 指针前移动
+
+            } else if (this.isSameNode(oldEndNode, newStartNode)) {
+                // 旧后，新前
+                this.patchVNode(oldEndNode, newStartNode);
+                // 移动【新前】的节点到旧节点的【旧前】的前面
+                el.insertBefore(oldEndNode.el, oldStartNode.el);
+
+                oldEndNode = oldChild[--oldEndIdx]; // 指针后移
+                newStartNode = newChild[++newStartIdx]; // 指针前移动
+            } else {
+                // 都没有找到，那么需要循环旧节点
+                /*
+                    再下一轮会发现四次比较都没有发现可以复用的节点，这咋办呢，
+                    因为最终我们需要让旧列表变成新列表，所以当前的newStartVNode如果在旧列表里没找到可复用的，
+                    需要直接创建一个新节点插进去，但是我们一眼就看到了旧节点里有c节点，只是不在此轮比较的四个位置上，
+                    那么我们可以直接在旧的列表里搜索，找到了就进行patch，并且把该节点移动到当前比较区间的第一个，
+                    也就是oldStartIdx之前，这个位置空下来了就置为null，
+                    后续遍历到就跳过，如果没找到，那么说明这丫节点真的是新增的，直接创建该节点插入到oldStartIdx之前即可
+                */
+
+
+                // 循环查找新节点是否在旧节点数组里存在
+                let findIndex = this.findSameNode(oldChild, newStartNode);
+
+                if (findIndex === -1) {
+                    // 如果找不到 那么就插入到 旧前节点的前面
+                    el.insertBefore(this.createEl(newStartNode), oldStartNode.el);
+                } else {
+                    // 如果找到了， 那么就移动旧节点到 旧前节点的前面
+
+                    let oldVNode = oldChild[findIndex];
+                    this.patchVNode(oldVNode, newStartNode);
+                    el.insertBefore(oldVNode.el, oldStartNode.el);
+
+                    // 原位置置空
+                    oldChild[findIndex] = null;
+
+                }
+
+                // 指针进行移动
+                newStartNode = newChild[++newStartIdx];
+
             }
+        } // while END
+
+        // 旧的列表里多了节点，这两个在新列表里没有，所以需要把它们移除，
+        // 反过来，如果新的列表里多了旧列表里没有的节点，那么就创建和插入之
+        if (oldStartIdx <= oldEndIdx) {
+            // 旧list没有遍历完成, 删除
+            for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+                oldChild[i] && el.removeChild(oldChild[i].el);
+            }
+
+        } else if (newStartIdx <= newEndIdx) {
+            // 新list没有遍历完成， 插入
+            for (let i = newStartIdx; i <= newEndIdx; i++) {
+                el.insertBefore(this.createEl(newChild[i]), oldChild[oldStartIdx].el);
+            }
+
         }
 
 
 
 
+    }
+    // 查找相同的node
+    findSameNode (oldChild, newStartNode) {
+        // let index = -1;
+        // oldChild.forEach((item, i) => {
+        //     if (this.isSameNode(item, newStartNode)) {
+        //         index = i;
+        //     }
+        // });
+        // return index;
+        return oldChild.findIndex((item) => {
+            return item && this.isSameNode(item, newStartNode);
+        });
     }
     // 更新类名，style, 其他attr, 都是一样的
     updateClass (el, newNode) {

@@ -1,6 +1,15 @@
-export default function (sel, data, children, text, elm) {
-    const key = data.key === undefined ? undefined : data.key;
+export default function (tag,
+    text,
+    children,
+    el,
+    key,
+    data) {
     return {
-        sel, data, children, text, elm, key
+        tag,
+        text,
+        children,
+        el,
+        key,
+        data
     };
 }
