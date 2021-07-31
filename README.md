@@ -40,4 +40,4 @@ patch 函数是主函数，主要用来进行新旧vnode的对比，找到差异
 
 参考文章
 
-[手写一个虚拟DOM库，彻底让你理解diff算法](https://mp.weixin.qq.com/s/V_YWbswXoea-Em-l_K97sw)
+[手写一个虚拟DOM库，彻底让你理解diff算法](https://juejin.cn/post/6984939221681176607)
