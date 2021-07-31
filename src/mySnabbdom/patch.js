@@ -1,7 +1,7 @@
 import vnode from './vnode.js';
 import h from './h.js';
 
-
+// https://mp.weixin.qq.com/s/V_YWbswXoea-Em-l_K97sw 教程
 
 class Patch {
     constructor (oldNode, newNode) {
@@ -26,6 +26,11 @@ class Patch {
         if (oldVNode.tag === newVNode.tag) {
 
             let el = newVNode.el = oldVNode.el;
+            // 更新类名
+            this.updateClass(el, newVNode);
+            // 更新事件
+            this.updateEvent(el, oldVNode, newVNode);
+
             // newNode 如果是text 节点
             // 删除原来的子节点，并且更新新的text节点
             if (newVNode.text) {
@@ -78,14 +83,19 @@ class Patch {
             // 3. 删除旧的DOM结构
     
             let newEl = createEl(newVNode);
+            // 更新类名
+            this.updateClass(newEl, newVNode);
+            // 删除所有的事件，防止内存泄漏
+            this.removeEvent(oldVNode);
+            // 更新事件
+            this.updateEvent(newEl, null, newVNode);
+
             let parent = oldVNode.el.parentNode;
             parent.insertBefore(newEl, oldVNode.el);
             parent.removeChild(oldVNode.el);
         }
     }
-    diff (el, oldChild, newChild) {
-
-    }
+    
     // 使用递归，把
     createEl (node) {
         let el = document.createElement(node.tag);
@@ -105,6 +115,87 @@ class Patch {
 
         return el;
 
+    }
+
+    isSameNode (a, b) {
+        return a.key === b.key && a.tag === b.tag;
+    }
+    // diff 算法
+    diff (el, oldChild, newChild) {
+        // 位置指针
+        let oldStartIdx = 0;
+        let oldEndIdx = oldChild.length - 1;
+
+        let newStartIdx = 0;
+        let newEndIdx = newChild.length - 1;
+
+
+        // 节点指针
+
+        let oldStartNode = oldChild[oldStartIdx];
+        let oldEndNode = oldChild[oldEndIdx];
+
+        let newStartNode = newChild[newStartIdx];
+        let newEndNode = newChild[newEndIdx];
+
+        while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+            if (this.isSameNode(oldStartNode, newStartNode)) {
+                
+            } else if (this.isSameNode(oldStartNode, newEndNode)) {
+
+            } else if (this.isSameNode(oldEndNode, newStartNode)) {
+                
+            } else if (this.isSameNode(oldEndNode, newEndNode)) {
+                this.patchVNode(oldEndNode, newEndNode);
+                oldEndNode = oldChild[--oldEndIdx];
+                newEndNode = newChild[--newEndNode];
+            }
+        }
+
+
+
+
+    }
+    // 更新类名，style, 其他attr, 都是一样的
+    updateClass (el, newNode) {
+        let className = '';
+        el.className = '';
+        if (newNode.data && newNode.data.class) {
+            Object.keys(newNode.data.class).forEach((item) => {
+                if (newNode.data.class[item]) {
+                    className += item + ' '; // 类名之间要有空格
+                }
+            });
+            el.className = className;
+        }
+    }
+    // 更新事件
+    updateEvent (el, oldNode, newNode) {
+        let oldEvents = oldNode && oldNode.data.event ? oldNode.data.event : {};
+        let newEvents = newNode.data.event || {};
+        // 把旧的不需要的event删除
+        Object.keys(oldEvents).forEach((item) => {
+            if (newEvents[item] === undefined || oldEvents[item] !== newEvents[item]) {
+                // 删除
+                el.removeEventListener(item, oldEvents[item]);
+            }
+        });
+        // 添加新的新增的event
+        Object.keys(newEvents).forEach((item) => {
+            if (oldEvents[item] === undefined || oldEvents[item] !== newEvents[item]) {
+                // 删除
+                el.addEventListener(item, newEvents[item]);
+            }
+        });
+    }
+    // 移除VNode对应DOM上的所有事件
+    removeEvent (oldNode) {
+        if (oldNode && oldNode.data && oldNode.data.event) {
+            const events = oldNode.data.event;
+            Object.keys(events).forEach((item) => {
+                oldNode.el.removeEventListener(item, events[item]);
+            });
+        }
     }
 }
 export default Patch;
